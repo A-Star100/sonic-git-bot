@@ -7,11 +7,12 @@ module.exports = (app) => {
   // === ISSUES ===
   app.on("issues.opened", async (context) => {
     const { title, body } = context.payload.issue;
-    const content = `${title} ${body}`.toLowerCase();
+    const content = `${title} ${body}`.toLowerCase(); // Use backticks and ${} properly
 
     const labels = [];
     if (content.includes("help")) labels.push("help wanted");
-    if (content.includes("bug")) labels.push("bug");
+    // You had `comment` instead of `content` here:
+    if (content.includes("bug") && !content.includes("fix")) labels.push("bug");
 
     if (labels.length) {
       await context.octokit.issues.addLabels(
@@ -19,84 +20,30 @@ module.exports = (app) => {
       );
 
       await context.octokit.issues.createComment(
-        context.issue({ body: `Thanks! I've added the label(s): ${labels.join(", ")}. Gotta go fast!` })
+        context.issue({ body: `Thanks! I've added the label(s): ${labels.join(", ")}. Gotta go fast!` }) // backticks
       );
     }
   });
 
-async function ensureLabelExists(context, label) {
-  const { owner, repo } = context.repo();
-  try {
-    await context.octokit.issues.getLabel({ owner, repo, name: label });
-  } catch (error) {
-    if (error.status === 404) {
-      // Label doesn't exist, so create it
-      await context.octokit.issues.createLabel({
-        owner,
-        repo,
-        name: label,
-        color: "ededed", // Pick any color you like
-        description: `Automatically created label: ${label}`,
+  // === ISSUE COMMENTS ===
+  app.on("issue_comment.created", async (context) => {
+    const comment = context.payload.comment.body.toLowerCase();
+
+    const labels = [];
+    if (comment.includes("help")) labels.push("help wanted");
+    if (comment.includes("bug") && !comment.includes("fix")) labels.push("bug");
+
+    if (labels.length) {
+      await context.octokit.issues.addLabels(
+        context.issue({ labels })
+      );
+
+      await context.octokit.issues.createComment({
+        ...context.issue(),
+        body: `Heard you! I've tagged this with: ${labels.join(", ")}. This game of tag is starting to become a bit tiring, actually.`, // backticks and fixed comma
       });
-    } else {
-      throw error;
     }
-  }
-}
-
-
-app.on("issue_comment.created", async (context) => {
-  const comment = context.payload.comment.body.toLowerCase();
-  const issue = context.issue();
-
-  const labelsToAdd = [];
-  const labelsToRemove = [];
-
-  if (comment.includes("help")) labelsToAdd.push("help wanted");
-  if (comment.includes("bug")) labelsToAdd.push("bug");
-  if (comment.includes("fixed")) {
-    await ensureLabelExists(context, "fix");
-    labelsToAdd.push("fix");
-  }
-
-  const removeRegex = /remove\s+([\w\s-]+)/g;
-  let match;
-  while ((match = removeRegex.exec(comment)) !== null) {
-    labelsToRemove.push(match[1].trim());
-  }
-
-  if (labelsToAdd.length) {
-    await context.octokit.issues.addLabels({
-      ...issue,
-      labels: labelsToAdd,
-    });
-
-    await context.octokit.issues.createComment({
-      ...issue,
-      body: `Added label(s): ${labelsToAdd.join(", ")}`,
-    });
-  }
-
-  if (labelsToRemove.length) {
-    for (const label of labelsToRemove) {
-      try {
-        await context.octokit.issues.removeLabel({
-          ...issue,
-          name: label,
-        });
-      } catch (error) {
-        // Ignore if label doesn't exist on issue
-      }
-    }
-
-    await context.octokit.issues.createComment({
-      ...issue,
-      body: `Removed label(s): ${labelsToRemove.join(", ")}`,
-    });
-  }
-});
-
-
+  });
 
   // === PULL REQUESTS ===
   app.on("pull_request.opened", async (context) => {

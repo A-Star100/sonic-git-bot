@@ -19,7 +19,7 @@ module.exports = (app) => {
       );
 
       await context.octokit.issues.createComment(
-        context.issue({ body: `Thanks! I've added the label(s): ${labels.join(", ")} Gotta go fast!` })
+        context.issue({ body: `Thanks! I've added the label(s): ${labels.join(", ")}. Gotta go fast!` })
       );
     }
   });
@@ -39,17 +39,19 @@ module.exports = (app) => {
 
       await context.octokit.issues.createComment({
         ...context.issue(),
-        body: `Heard you! I've tagged this with: ${labels.join(", ")} Finally, I'll crash into more cars in City Escape.`,
+        body: `Heard you! I've tagged this with: ${labels.join(", ")}. This game of tag is starting to become a bit tiring, actually.`,
       });
     }
   });
 
-  // === PULL REQUESTS ===
-  app.on("pull_request.opened", async (context) => {
-    const { title, body } = context.payload.pull_request;
-    const content = `${title} ${body}`.toLowerCase();
+  // pull requests
+ app.on("pull_request.opened", async (context) => {
+  const { title, body, labels } = context.payload.pull_request;
+  const content = `${title} ${body}`.toLowerCase();
 
-    if (content.includes("fix") || content.includes("fixed")) {
+  if (content.includes("fix") || content.includes("fixed")) {
+    const existingLabels = labels.map(label => label.name);
+    if (!existingLabels.includes("fix")) {
       await context.octokit.issues.addLabels({
         owner: context.payload.repository.owner.login,
         repo: context.payload.repository.name,
@@ -64,5 +66,6 @@ module.exports = (app) => {
         body: "Hey guy! Thanks for the fix! 🚀 I've added the `fix` label. Take care!",
       });
     }
+  }
   });
 };

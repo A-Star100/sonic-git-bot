@@ -24,6 +24,27 @@ module.exports = (app) => {
     }
   });
 
+async function ensureLabelExists(context, label) {
+  const { owner, repo } = context.repo();
+  try {
+    await context.octokit.issues.getLabel({ owner, repo, name: label });
+  } catch (error) {
+    if (error.status === 404) {
+      // Label doesn't exist, so create it
+      await context.octokit.issues.createLabel({
+        owner,
+        repo,
+        name: label,
+        color: "ededed", // Pick any color you like
+        description: `Automatically created label: ${label}`,
+      });
+    } else {
+      throw error;
+    }
+  }
+}
+
+
 app.on("issue_comment.created", async (context) => {
   const comment = context.payload.comment.body.toLowerCase();
   const issue = context.issue();
@@ -31,19 +52,19 @@ app.on("issue_comment.created", async (context) => {
   const labelsToAdd = [];
   const labelsToRemove = [];
 
-  // Add labels based on keywords
   if (comment.includes("help")) labelsToAdd.push("help wanted");
   if (comment.includes("bug")) labelsToAdd.push("bug");
-  if (comment.includes("fixed")) labelsToAdd.push("fix");
-
-  // Detect "remove [label]" commands
-  const removeRegex = /remove\s+(\w+)/g;
-  let match;
-  while ((match = removeRegex.exec(comment)) !== null) {
-    labelsToRemove.push(match[1]);
+  if (comment.includes("fixed")) {
+    await ensureLabelExists(context, "fix");
+    labelsToAdd.push("fix");
   }
 
-  // Add labels if needed
+  const removeRegex = /remove\s+([\w\s-]+)/g;
+  let match;
+  while ((match = removeRegex.exec(comment)) !== null) {
+    labelsToRemove.push(match[1].trim());
+  }
+
   if (labelsToAdd.length) {
     await context.octokit.issues.addLabels({
       ...issue,
@@ -56,7 +77,6 @@ app.on("issue_comment.created", async (context) => {
     });
   }
 
-  // Remove labels if needed
   if (labelsToRemove.length) {
     for (const label of labelsToRemove) {
       try {
@@ -65,7 +85,7 @@ app.on("issue_comment.created", async (context) => {
           name: label,
         });
       } catch (error) {
-        // label might not exist — ignore error or log if you want
+        // Ignore if label doesn't exist on issue
       }
     }
 
@@ -75,6 +95,7 @@ app.on("issue_comment.created", async (context) => {
     });
   }
 });
+
 
 
   // === PULL REQUESTS ===

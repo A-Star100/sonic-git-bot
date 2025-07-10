@@ -48,57 +48,64 @@ module.exports = (app) => {
   }
 
   app.on("issue_comment.created", async (context) => {
-    const comment = context.payload.comment.body.toLowerCase();
-    const issue = context.issue();
+  const comment = context.payload.comment.body.toLowerCase();
+  const issue = context.issue();
 
-    const labelsToAdd = [];
-    const labelsToRemove = [];
+  // Get current labels on the issue
+  const { data: currentLabels } = await context.octokit.issues.listLabelsOnIssue(issue);
+  const currentLabelNames = currentLabels.map(label => label.name);
 
-    if (comment.includes("help")) labelsToAdd.push("help wanted");
-    if (comment.includes("bug") && !comment.includes("fix")) labelsToAdd.push("bug");
+  const labelsToAdd = [];
+  const labelsToRemove = [];
 
-    if (comment.includes("fixed") && !comment.includes("prefix")) {
-      await ensureLabelExists(context, "fix");
-      labelsToAdd.push("fix");
-    }
+  if (comment.includes("help") && !currentLabelNames.includes("help wanted")) labelsToAdd.push("help wanted");
+  if (comment.includes("bug") && !comment.includes("fix") && !currentLabelNames.includes("bug")) labelsToAdd.push("bug");
 
-    // Detect "remove [label]" commands, e.g. "remove bug" or "remove help wanted"
-    const removeRegex = /remove\s+([\w\s-]+)/g;
-    let match;
-    while ((match = removeRegex.exec(comment)) !== null) {
+  if (comment.includes("fixed") && !comment.includes("prefix") && !currentLabelNames.includes("fix")) {
+    await ensureLabelExists(context, "fix");
+    labelsToAdd.push("fix");
+  }
+
+  // Detect "remove [label]" commands
+  const removeRegex = /remove\s+([\w\s-]+)/g;
+  let match;
+  while ((match = removeRegex.exec(comment)) !== null) {
+    if (currentLabelNames.includes(match[1].trim())) {
       labelsToRemove.push(match[1].trim());
     }
+  }
 
-    if (labelsToAdd.length) {
-      await context.octokit.issues.addLabels({
-        ...issue,
-        labels: labelsToAdd,
-      });
+  if (labelsToAdd.length) {
+    await context.octokit.issues.addLabels({
+      ...issue,
+      labels: labelsToAdd,
+    });
 
-      await context.octokit.issues.createComment({
-        ...issue,
-        body: `Added label(s): ${labelsToAdd.join(", ")}`,
-      });
-    }
+    await context.octokit.issues.createComment({
+      ...issue,
+      body: `Added label(s): ${labelsToAdd.join(", ")}`,
+    });
+  }
 
-    if (labelsToRemove.length) {
-      for (const label of labelsToRemove) {
-        try {
-          await context.octokit.issues.removeLabel({
-            ...issue,
-            name: label,
-          });
-        } catch (error) {
-          // Ignore error if label not on issue
-        }
+  if (labelsToRemove.length) {
+    for (const label of labelsToRemove) {
+      try {
+        await context.octokit.issues.removeLabel({
+          ...issue,
+          name: label,
+        });
+      } catch {
+        // Ignore errors if label was not on issue
       }
-
-      await context.octokit.issues.createComment({
-        ...issue,
-        body: `Removed label(s): ${labelsToRemove.join(", ")}`,
-      });
     }
-  });
+
+    await context.octokit.issues.createComment({
+      ...issue,
+      body: `Removed label(s): ${labelsToRemove.join(", ")}`,
+    });
+  }
+});
+
 
   // === PULL REQUESTS ===
   app.on("pull_request.opened", async (context) => {

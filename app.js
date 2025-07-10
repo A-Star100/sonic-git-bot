@@ -29,7 +29,7 @@ module.exports = (app) => {
   if (toxicMatch) {
     await context.octokit.issues.createComment(
       context.issue({
-        body: `⚠️ Please keep discussions respectful. This issue may violate our Code of Conduct.`,
+        body: `⚠️ Whoa, slow down there! That kind of talk doesn’t fly in this zone. This issue might break the Code of Conduct — and breaking the rules could get you spin-dashed outta here!`,
       })
     );
     return; // Stop further processing if toxic
@@ -83,7 +83,7 @@ module.exports = (app) => {
   if (toxicMatch) {
     await context.octokit.issues.createComment({
       ...issue,
-      body: `⚠️ Please keep discussions respectful. This comment may violate our Code of Conduct.`,
+      body: `⚠️ Whoa, slow down there! That kind of talk doesn’t fly in this zone. This issue might break the Code of Conduct — and breaking the rules could get you spin-dashed outta here!`,
     });
     return; // Skip labeling if it's toxic
   }
@@ -122,7 +122,7 @@ module.exports = (app) => {
 
     await context.octokit.issues.createComment({
       ...issue,
-      body: `Added label(s): ${labelsToAdd.join(", ")}`,
+      body: `Heard ya, dude! I added label(s): ${labelsToAdd.join(", ")}! I'm excited for some chilli dogs!`,
     });
   }
 
@@ -140,7 +140,7 @@ module.exports = (app) => {
 
     await context.octokit.issues.createComment({
       ...issue,
-      body: `Removed label(s): ${labelsToRemove.join(", ")}`,
+      body: `I removed these labels: ${labelsToRemove.join(", ")}. They've been spindashed outta here, but they can return whenever you want.`,
     });
   }
 });
@@ -163,7 +163,7 @@ module.exports = (app) => {
           owner: context.payload.repository.owner.login,
           repo: context.payload.repository.name,
           issue_number: context.payload.pull_request.number,
-          body: "Hey guy! Thanks for the fix! 🚀 I've added the `fix` label. Take care!",
+          body: "Hey guy! Thanks for the fix! 🚀 I've added the appropriate label. Take care!",
         });
       }
     }

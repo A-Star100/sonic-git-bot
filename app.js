@@ -57,7 +57,8 @@ module.exports = (app) => {
   "hate",
   "kill",
   "moron",
-  "sucks",
+  "you suck",
+    "sucks"
     ];
 
   const commentBody = context.payload.comment.body.toLowerCase();

@@ -49,9 +49,32 @@ module.exports = (app) => {
   }
 
   app.on("issue_comment.created", async (context) => {
-  const comment = context.payload.comment.body.toLowerCase();
+    const toxicWords = [
+  "stupid",
+  "idiot",
+  "dumb",
+  "shut up",
+  "hate",
+  "kill",
+  "moron",
+  "sucks",
+    ];
+
+  const commentBody = context.payload.comment.body.toLowerCase();
   const issue = context.issue();
 
+  // === Basic Toxicity Detection ===
+  const toxicMatch = toxicWords.find((word) => commentBody.includes(word));
+  if (toxicMatch) {
+    await context.octokit.issues.createComment({
+      ...issue,
+      body: `⚠️ Please keep discussions respectful. This comment may violate our Code of Conduct.`,
+    });
+    return; // Skip labeling if it's toxic
+  }
+    
+  const comment = context.payload.comment.body.toLowerCase();
+    
   // Get current labels on the issue
   const { data: currentLabels } = await context.octokit.issues.listLabelsOnIssue(issue);
   const currentLabelNames = currentLabels.map(label => label.name);

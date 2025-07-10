@@ -14,6 +14,7 @@ const toxicWords = [
   "you suck",
   "sucks",
   "sucker",
+  "suckers",
   "dork"
     ];
 

@@ -24,25 +24,119 @@ module.exports = (app) => {
     }
   });
 
-  // === ISSUE COMMENTS ===
   app.on("issue_comment.created", async (context) => {
-    const comment = context.payload.comment.body.toLowerCase();
+  const commentBody = context.payload.comment.body.toLowerCase();
 
-    const labels = [];
-    if (comment.includes("help")) labels.push("help wanted");
-    if (comment.includes("bug")) labels.push("bug");
+  const owner = context.payload.repository.owner.login;
+  const repo = context.payload.repository.name;
 
-    if (labels.length) {
-      await context.octokit.issues.addLabels(
-        context.issue({ labels })
-      );
+  // Determine issue or PR number
+  const issueNumber =
+    context.payload.issue?.number ??
+    context.payload.pull_request?.number;
+
+  if (!issueNumber) {
+    app.log.warn("No issue or PR number found on comment event.");
+    return;
+  }
+
+  // === Labeling logic for help and bug ===
+  const labels = [];
+  if (commentBody.includes("help")) labels.push("help wanted");
+  if (commentBody.includes("bug")) labels.push("bug");
+
+  if (labels.length) {
+    await context.octokit.issues.addLabels({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      labels,
+    });
+
+    await context.octokit.issues.createComment({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      body: `Heard you! I've tagged this with: ${labels.join(
+        ", "
+      )}. This game of tag is starting to become a bit tiring, actually.`,
+    });
+
+    // Return early so the release logic doesn't run on these comments
+    return;
+  }
+
+  // === Release creation conversation ===
+  const triggerWords = ["create release", "release changes", "release"];
+  const isTrigger = triggerWords.some((word) =>
+    commentBody.includes(word)
+  );
+
+  const isConfirmation = commentBody.trim() === "yes";
+
+ // Fetch last 5 comments sorted newest first
+const comments = await context.octokit.issues.listComments({
+  owner,
+  repo,
+  issue_number: issueNumber,
+  per_page: 5,
+  direction: "desc",
+});
+
+// Get the very latest comment
+const lastComment = comments.data[0];
+const botAskedForConfirmation =
+  lastComment &&
+  lastComment.user.type === "Bot" &&
+  lastComment.body.includes(
+    "Do you want to create a release? Reply with yes or no."
+  );
+    
+  if (isTrigger && !botAskedForConfirmation) {
+    // Ask for confirmation
+    await context.octokit.issues.createComment({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      body:
+        "I see you want to create a release. Do you want to create a release? Reply with yes or no.",
+    });
+    return;
+  }
+
+  if (isConfirmation && botAskedForConfirmation) {
+    const tagName = "v1.0.0"; // customize as needed
+    const releaseName = `Release ${tagName}`;
+    const releaseBody = "This release was created automatically via Probot.";
+
+    try {
+      const release = await context.octokit.repos.createRelease({
+        owner,
+        repo,
+        tag_name: tagName,
+        name: releaseName,
+        body: releaseBody,
+        draft: false,
+        prerelease: false,
+      });
 
       await context.octokit.issues.createComment({
-        ...context.issue(),
-        body: `Heard you! I've tagged this with: ${labels.join(", ")}. This game of tag is starting to become a bit tiring, actually.`,
+        owner,
+        repo,
+        issue_number: issueNumber,
+        body: `Release created successfully: ${release.data.html_url}`,
+      });
+    } catch (error) {
+      await context.octokit.issues.createComment({
+        owner,
+        repo,
+        issue_number: issueNumber,
+        body: `Oops! Something went wrong while creating the release: ${error.message}`,
       });
     }
-  });
+  }
+});
+
 
   // pull requests
  app.on("pull_request.opened", async (context) => {
@@ -67,81 +161,5 @@ module.exports = (app) => {
       });
     }
   }
-  });
-
-  // === Release creation conversation ===
-  app.on("issue_comment.created", async (context) => {
-    const commentBody = context.payload.comment.body.toLowerCase();
-    const issueNumber = context.payload.issue.number;
-    const owner = context.payload.repository.owner.login;
-    const repo = context.payload.repository.name;
-
-    // Check if comment contains release trigger phrases
-    const triggerWords = ["create release", "release changes", "release"];
-    const isTrigger = triggerWords.some(word => commentBody.includes(word));
-
-    // Check if this is a confirmation reply (just "yes")
-    const isConfirmation = commentBody.trim() === "yes";
-
-    // Store state for whether the bot asked for confirmation (simplest way: check bot's last comment)
-    // Fetch comments on the issue to see if bot asked for confirmation recently
-    const comments = await context.octokit.issues.listComments({
-      owner,
-      repo,
-      issue_number: issueNumber,
-      per_page: 10,
-      // GitHub sorts comments oldest first by default, newest last, so last comment is last
-    });
-    const botAskedForConfirmation = comments.data.some(c => 
-      c.user.type === "Bot" && 
-      c.body.includes("Do you want to create a release? Reply with yes or no.")
-    );
-
-    if (isTrigger && !botAskedForConfirmation) {
-      // Ask for confirmation
-      await context.octokit.issues.createComment({
-        owner,
-        repo,
-        issue_number: issueNumber,
-        body: "I see you want to create a release. Do you want to create a release? Reply with yes or no.",
-      });
-      return;
-    }
-
-    if (isConfirmation && botAskedForConfirmation) {
-      // Create a release based on a template
-      // You can customize tag_name, name, body, etc. or pull from issue content, PR, etc.
-      const tagName = "v1.0.0"; // example static tag
-      const releaseName = `Release ${tagName}`;
-      const releaseBody = "This release was created automatically via Probot.";
-
-      try {
-        const release = await context.octokit.repos.createRelease({
-          owner,
-          repo,
-          tag_name: tagName,
-          name: releaseName,
-          body: releaseBody,
-          draft: false,
-          prerelease: false,
-        });
-
-        await context.octokit.issues.createComment({
-          owner,
-          repo,
-          issue_number: issueNumber,
-          body: `Release created successfully: ${release.data.html_url}`,
-        });
-      } catch (error) {
-        await context.octokit.issues.createComment({
-          owner,
-          repo,
-          issue_number: issueNumber,
-          body: `Oops! Something went wrong while creating the release: ${error.message}`,
-        });
-      }
-    }
-
-    // Optionally handle "no" replies, or other cases, etc.
   });
 };

@@ -2,13 +2,38 @@
  * @param {import('probot').Probot} app
  */
 
+// for moderation
+const toxicWords = [
+  "stupid",
+  "idiot",
+  "dumb",
+  "shut up",
+  "hate",
+  "kill",
+  "moron",
+  "you suck",
+    "sucks"
+    ];
+
 module.exports = (app) => {
   app.log("App loaded!");
 
   // === ISSUES ===
   app.on("issues.opened", async (context) => {
     const { title, body } = context.payload.issue;
-    const content = `${title} ${body}`.toLowerCase();
+  const content = `${title} ${body}`.toLowerCase();
+
+  // === Toxicity Check ===
+  const toxicRegex = new RegExp(`\\b(${toxicWords.join("|")})\\b`, "i");
+  const toxicMatch = toxicRegex.test(content);
+  if (toxicMatch) {
+    await context.octokit.issues.createComment(
+      context.issue({
+        body: `⚠️ Please keep discussions respectful. This issue may violate our Code of Conduct.`,
+      })
+    );
+    return; // Stop further processing if toxic
+  }
 
     const labels = [];
     const fixedBug = content.includes("fix") && !content.includes("prefix");
@@ -49,23 +74,12 @@ module.exports = (app) => {
   }
 
   app.on("issue_comment.created", async (context) => {
-    const toxicWords = [
-  "stupid",
-  "idiot",
-  "dumb",
-  "shut up",
-  "hate",
-  "kill",
-  "moron",
-  "you suck",
-    "sucks"
-    ];
-
   const commentBody = context.payload.comment.body.toLowerCase();
   const issue = context.issue();
 
   // === Basic Toxicity Detection ===
-  const toxicMatch = toxicWords.find((word) => commentBody.includes(word));
+  const toxicRegex = new RegExp(`\\b(${toxicWords.join("|")})\\b`, "i");
+  const toxicMatch = toxicRegex.test(content);
   if (toxicMatch) {
     await context.octokit.issues.createComment({
       ...issue,

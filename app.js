@@ -1,6 +1,7 @@
 /**
  * @param {import('probot').Probot} app
  */
+
 module.exports = (app) => {
   app.log("App loaded!");
 
@@ -105,8 +106,6 @@ module.exports = (app) => {
     });
   }
 });
-
-
   // === PULL REQUESTS ===
   app.on("pull_request.opened", async (context) => {
     const { title, body, labels } = context.payload.pull_request;

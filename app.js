@@ -75,13 +75,13 @@ module.exports = (app) => {
     }
   }
 
-  app.on("issue_comment.created", async (context) => {
+app.on("issue_comment.created", async (context) => {
   const commentBody = context.payload.comment.body.toLowerCase();
   const issue = context.issue();
 
   // === Basic Toxicity Detection ===
   const toxicRegex = new RegExp(`\\b(${toxicWords.join("|")})\\b`, "i");
-  const toxicMatch = toxicRegex.test(content);
+  const toxicMatch = toxicRegex.test(commentBody);  // <-- fixed here
   if (toxicMatch) {
     await context.octokit.issues.createComment({
       ...issue,
@@ -89,9 +89,9 @@ module.exports = (app) => {
     });
     return; // Skip labeling if it's toxic
   }
-    
-  const comment = context.payload.comment.body.toLowerCase();
-    
+
+  const comment = commentBody;
+
   // Get current labels on the issue
   const { data: currentLabels } = await context.octokit.issues.listLabelsOnIssue(issue);
   const currentLabelNames = currentLabels.map(label => label.name);
@@ -146,6 +146,8 @@ module.exports = (app) => {
     });
   }
 });
+
+  
   // === PULL REQUESTS ===
   app.on("pull_request.opened", async (context) => {
     const { title, body, labels } = context.payload.pull_request;

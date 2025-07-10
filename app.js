@@ -51,7 +51,11 @@ module.exports = (app) => {
       );
     } else if (fixedBug) {
       await context.octokit.issues.createComment(
-        context.issue({ body: `Thanks for your fix! A maintainer will review it real fast!` })
+        context.issue({ body: `Thanks for your fix! A maintainer'll review it real fast!` })
+      );
+    } else {
+      await context.octokit.issues.createComment(
+        context.issue({ body: `Hey there 👋! Thanks for opening your issue! Contributions are as good as chilli dogs to me! Gotta go fast!` })
       );
     }
   });
@@ -171,6 +175,10 @@ app.on("issue_comment.created", async (context) => {
           body: "Hey guy! Thanks for the fix! 🚀 I've added the appropriate label. Take care!",
         });
       }
+    } else {
+      await context.octokit.issues.createComment(
+        context.issue({ body: `Hey there 👋! Thanks for opening your pull request! Contributions are as good as chilli dogs to me! Gotta go fast!` })
+      );
     }
   });
 };

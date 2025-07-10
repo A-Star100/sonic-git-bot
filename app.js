@@ -24,25 +24,58 @@ module.exports = (app) => {
     }
   });
 
-  // === ISSUE COMMENTS ===
-  app.on("issue_comment.created", async (context) => {
-    const comment = context.payload.comment.body.toLowerCase();
+app.on("issue_comment.created", async (context) => {
+  const comment = context.payload.comment.body.toLowerCase();
+  const issue = context.issue();
 
-    const labels = [];
-    if (comment.includes("help")) labels.push("help wanted");
-    if (comment.includes("bug")) labels.push("bug");
+  const labelsToAdd = [];
+  const labelsToRemove = [];
 
-    if (labels.length) {
-      await context.octokit.issues.addLabels(
-        context.issue({ labels })
-      );
+  // Add labels based on keywords
+  if (comment.includes("help")) labelsToAdd.push("help wanted");
+  if (comment.includes("bug")) labelsToAdd.push("bug");
+  if (comment.includes("fixed")) labelsToAdd.push("fix");
 
-      await context.octokit.issues.createComment({
-        ...context.issue(),
-        body: `Heard you! I've tagged this with: ${labels.join(", ")}. This game of tag is starting to become a bit tiring, actually.`,
-      });
+  // Detect "remove [label]" commands
+  const removeRegex = /remove\s+(\w+)/g;
+  let match;
+  while ((match = removeRegex.exec(comment)) !== null) {
+    labelsToRemove.push(match[1]);
+  }
+
+  // Add labels if needed
+  if (labelsToAdd.length) {
+    await context.octokit.issues.addLabels({
+      ...issue,
+      labels: labelsToAdd,
+    });
+
+    await context.octokit.issues.createComment({
+      ...issue,
+      body: `Added label(s): ${labelsToAdd.join(", ")}`,
+    });
+  }
+
+  // Remove labels if needed
+  if (labelsToRemove.length) {
+    for (const label of labelsToRemove) {
+      try {
+        await context.octokit.issues.removeLabel({
+          ...issue,
+          name: label,
+        });
+      } catch (error) {
+        // label might not exist — ignore error or log if you want
+      }
     }
-  });
+
+    await context.octokit.issues.createComment({
+      ...issue,
+      body: `Removed label(s): ${labelsToRemove.join(", ")}`,
+    });
+  }
+});
+
 
   // === PULL REQUESTS ===
   app.on("pull_request.opened", async (context) => {

@@ -2,7 +2,7 @@
  * @param {import('probot').Probot} app
  */
 
-// for moderation
+// for moderation only, intended to keep people safe from bad talk, especially young people
 const toxicWords = [
   "stupid",
   "idiot",
@@ -12,7 +12,9 @@ const toxicWords = [
   "kill",
   "moron",
   "you suck",
-    "sucks"
+  "sucks",
+  "sucker",
+  "dork"
     ];
 
 module.exports = (app) => {

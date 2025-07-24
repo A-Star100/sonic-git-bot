@@ -18,11 +18,16 @@ const toxicWords = [
   "dork"
     ];
 
+
 module.exports = (app) => {
   app.log("App loaded!");
 
   // === ISSUES ===
   app.on("issues.opened", async (context) => {
+      // Fetch comments on the issue first
+  const { data: comments } = await context.octokit.issues.listComments(context.issue());
+  const hasComments = comments.length > 0;
+    
     const { title, body } = context.payload.issue;
   const content = `${title} ${body}`.toLowerCase();
 
@@ -41,8 +46,12 @@ module.exports = (app) => {
     const labels = [];
     const fixedBug = content.includes("fix") && !content.includes("prefix");
 
+    if (!hasComments) {
     if (content.includes("help")) labels.push("help wanted");
-    if (content.includes("bug") && !fixedBug) labels.push("bug");
+    if (content.includes("bug") && !fixedBug) labels.push("bug");   
+    }
+
+
 
     if (labels.length && !fixedBug) {
       await context.octokit.issues.addLabels(context.issue({ labels }));

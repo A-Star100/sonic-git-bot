@@ -104,8 +104,22 @@ app.on("issue_comment.created", async (context) => {
   const labelsToAdd = [];
   const labelsToRemove = [];
 
-  if (comment.includes("help") && !currentLabelNames.includes("help wanted")) labelsToAdd.push("help wanted");
-  if (comment.includes("bug") && !comment.includes("fix") && !currentLabelNames.includes("bug")) labelsToAdd.push("bug");
+  if (
+  comment.includes("help") &&
+  !currentLabelNames.includes("help wanted") &&
+  !labelsToRemove.includes("help wanted")
+) {
+  labelsToAdd.push("help wanted");
+}
+
+  if (
+  comment.includes("bug") &&
+  !comment.includes("fix") &&
+  !currentLabelNames.includes("bug") &&
+  !labelsToRemove.includes("bug")
+) {
+  labelsToAdd.push("bug");
+}
 
   if (comment.includes("fixed") && !comment.includes("prefix") && !currentLabelNames.includes("fix")) {
     await ensureLabelExists(context, "fix");
@@ -113,14 +127,15 @@ app.on("issue_comment.created", async (context) => {
   }
 
   // Detect "remove [label]" commands
-  const removeRegex = /remove\s+([\w\s-]+)/g;
-  let match;
-  while ((match = removeRegex.exec(comment)) !== null) {
-    if (currentLabelNames.includes(match[1].trim())) {
-      labelsToRemove.push(match[1].trim());
-    }
+const removeRegex = /remove\s+(?:the\s+)?label\s+([\w\s-]+)/gi;
+let match;
+while ((match = removeRegex.exec(comment)) !== null) {
+  const labelToRemove = match[1].trim().toLowerCase();
+  const existingLabel = currentLabelNames.find(l => l.toLowerCase() === labelToRemove);
+  if (existingLabel) {
+    labelsToRemove.push(existingLabel);
   }
-
+}
   if (labelsToAdd.length) {
     await context.octokit.issues.addLabels({
       ...issue,

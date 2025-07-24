@@ -86,13 +86,12 @@ app.on("issue_comment.created", async (context) => {
 
   // === Basic Toxicity Detection ===
   const toxicRegex = new RegExp(`\\b(${toxicWords.join("|")})\\b`, "i");
-  const toxicMatch = toxicRegex.test(commentBody);  // <-- fixed here
-  if (toxicMatch) {
+  if (toxicRegex.test(commentBody)) {
     await context.octokit.issues.createComment({
       ...issue,
       body: `⚠️ Whoa, slow down there! That kind of talk doesn’t fly in this zone. This issue might break the Code of Conduct — and breaking the rules could get you spin-dashed outta here!`,
     });
-    return; // Skip labeling if it's toxic
+    return;
   }
 
   const comment = commentBody;
@@ -104,38 +103,48 @@ app.on("issue_comment.created", async (context) => {
   const labelsToAdd = [];
   const labelsToRemove = [];
 
+  // === Detect "remove [label]" commands first ===
+  const removeRegex = /remove\s+(?:the\s+)?label\s+([\w\s-]+)/gi;
+  let match;
+  while ((match = removeRegex.exec(comment)) !== null) {
+    const labelToRemove = match[1].trim().toLowerCase();
+    const existingLabel = currentLabelNames.find(l => l.toLowerCase() === labelToRemove);
+    if (existingLabel && !labelsToRemove.includes(existingLabel)) {
+      labelsToRemove.push(existingLabel);
+    }
+  }
+
+  // === Add labels only if not already present and not marked for removal ===
   if (
-  comment.includes("help") &&
-  !currentLabelNames.includes("help wanted") &&
-  !labelsToRemove.includes("help wanted")
-) {
-  labelsToAdd.push("help wanted");
-}
+    comment.includes("help") &&
+    !currentLabelNames.includes("help wanted") &&
+    !labelsToRemove.includes("help wanted")
+  ) {
+    await ensureLabelExists(context, "help wanted");
+    labelsToAdd.push("help wanted");
+  }
 
   if (
-  comment.includes("bug") &&
-  !comment.includes("fix") &&
-  !currentLabelNames.includes("bug") &&
-  !labelsToRemove.includes("bug")
-) {
-  labelsToAdd.push("bug");
-}
+    comment.includes("bug") &&
+    !comment.includes("fix") &&
+    !currentLabelNames.includes("bug") &&
+    !labelsToRemove.includes("bug")
+  ) {
+    await ensureLabelExists(context, "bug");
+    labelsToAdd.push("bug");
+  }
 
-  if (comment.includes("fixed") && !comment.includes("prefix") && !currentLabelNames.includes("fix")) {
+  if (
+    comment.includes("fixed") &&
+    !comment.includes("prefix") &&
+    !currentLabelNames.includes("fix") &&
+    !labelsToRemove.includes("fix")
+  ) {
     await ensureLabelExists(context, "fix");
     labelsToAdd.push("fix");
   }
 
-  // Detect "remove [label]" commands
-const removeRegex = /remove\s+(?:the\s+)?label\s+([\w\s-]+)/gi;
-let match;
-while ((match = removeRegex.exec(comment)) !== null) {
-  const labelToRemove = match[1].trim().toLowerCase();
-  const existingLabel = currentLabelNames.find(l => l.toLowerCase() === labelToRemove);
-  if (existingLabel) {
-    labelsToRemove.push(existingLabel);
-  }
-}
+  // === Apply label additions ===
   if (labelsToAdd.length) {
     await context.octokit.issues.addLabels({
       ...issue,
@@ -148,6 +157,7 @@ while ((match = removeRegex.exec(comment)) !== null) {
     });
   }
 
+  // === Apply label removals ===
   if (labelsToRemove.length) {
     for (const label of labelsToRemove) {
       try {
@@ -156,7 +166,7 @@ while ((match = removeRegex.exec(comment)) !== null) {
           name: label,
         });
       } catch {
-        // Ignore errors if label was not on issue
+        // Ignore errors if label was not on the issue
       }
     }
 
@@ -166,6 +176,7 @@ while ((match = removeRegex.exec(comment)) !== null) {
     });
   }
 });
+
 
   
   // === PULL REQUESTS ===

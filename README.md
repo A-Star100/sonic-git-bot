@@ -18,7 +18,7 @@ npm start
 
 3. Go to http://localhost:3000/, click `Register GitHub App` and select the app name of your choice.
 
-4. Select the repository (or organization) where your GitHub App will be installed. _It can be completly different from the GitHub App repo_
+4. Select the repository (or organization) where your GitHub App will be installed. _It can be completely different from the GitHub App repo_
 
 Well done! Your GitHub app has been created but is not running yet. You can close the process with `Ctrl+C` in your terminal.
 Note that a file called `.env` has been created. It contains all the necessary informations to run your app localy or remotely.

@@ -2,7 +2,7 @@
  * @param {import('probot').Probot} app
  */
 
-// for moderation only, intended to keep people safe from bad talk, especially young people
+// moderation
 const toxicWords = [
   "stupid",
   "idiot",

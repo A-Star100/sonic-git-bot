@@ -217,3 +217,27 @@ app.on("issue_comment.created", async (context) => {
     }
   });
 };
+
+// === GITHUB ACTIONS STUFF ===
+  if (context.payload.issue.pull_request && commentBody.includes("@sonic-git-bot build")) {
+    try {
+      const { data: pr } = await context.octokit.pulls.get(context.repo({
+        pull_number: context.payload.issue.number,
+      }));
+
+      await context.octokit.actions.createWorkflowDispatch(context.repo({
+        workflow_id: "sonic-git-bot.yml",
+        ref: pr.head.ref, 
+      }));
+
+      await context.octokit.issues.createComment(context.issue({
+        body: `Alright! 💨 I'm starting a build! \`${pr.head.ref}\`.`,
+      }));
+    } catch (err) {
+      app.log.error(err);
+      await context.octokit.issues.createComment(context.issue({
+        body: `Internal Error: Aw man, I couldn't make it to the Special Stage... I need \`sonic-git-bot.yml\` to have \`workflow_dispatch:\` enabled!`,
+      }));
+    }
+    return;
+  }

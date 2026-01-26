@@ -3,20 +3,22 @@
  */
 
 // moderation
-const toxicWords = [
-  "stupid",
-  "idiot",
-  "dumb",
-  "shut up",
-  "hate",
-  "kill",
-  "moron",
-  "you suck",
-  "sucks",
-  "sucker",
-  "suckers",
-  "dork"
-    ];
+function decode(base64) {
+  return JSON.parse(Buffer.from(base64, "base64").toString("utf8"));
+}
+
+function escapeRegex(word) {
+  return word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const toxicWords = decode(
+  "WyJzdHVwaWQiLCJpZGlvdCIsImR1bWIiLCJzaHV0IHVwIiwiaGF0ZSIsImtpbGwiLCJtb3JvbiIsInlvdSBzdWNrIiwic3Vja3MiLCJzdWNrZXIiLCJzdWNrZXJzIiwiZG9yayJd"
+);
+
+const toxicRegex = new RegExp(
+  toxicWords.map(escapeRegex).join("|"),
+  "i"
+);
 
 
 module.exports = (app) => {

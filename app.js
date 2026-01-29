@@ -42,6 +42,7 @@ module.exports = (app) => {
 
     if (!hasComments) {
     if (content.includes("help")) labels.push("help wanted");
+    if (content.includes("bump")) labels.push("version-bump");
     if (content.includes("bug") && !fixedBug) labels.push("bug");   
     }
 

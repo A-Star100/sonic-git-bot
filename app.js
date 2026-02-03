@@ -31,7 +31,7 @@ module.exports = (app) => {
   if (toxicMatch) {
     await context.octokit.issues.createComment(
       context.issue({
-        body: `⚠️ Whoa, slow down there! That kind of talk doesn’t fly in this zone. This issue might break the Code of Conduct — and breaking the rules could get you spin-dashed outta here!`,
+        body: `⚠️ Whoa, slow down there! That kind of talk doesn’t fly in this zone. You could get spindashed outta here!`,
       })
     );
     return; // Stop further processing if toxic
@@ -42,7 +42,7 @@ module.exports = (app) => {
 
     if (!hasComments) {
     if (content.includes("help")) labels.push("help wanted");
-    if (content.includes("bump")) labels.push("version-bump");
+    if (content.includes("bump")) labels.push("version bump");
     if (content.includes("bug") && !fixedBug) labels.push("bug");   
     }
 
@@ -59,7 +59,7 @@ module.exports = (app) => {
       );
     } else {
       await context.octokit.issues.createComment(
-        context.issue({ body: `Hey there 👋! Thanks for opening your issue! Contributions are as good as chilli dogs to me! Gotta go fast!` })
+        context.issue({ body: `Hey there 👋! Thanks for opening this issue! Contributions are as good as chilli dogs to me! Gotta go fast!` })
       );
     }
   });
@@ -93,7 +93,7 @@ app.on("issue_comment.created", async (context) => {
   if (toxicRegex.test(commentBody)) {
     await context.octokit.issues.createComment({
       ...issue,
-      body: `⚠️ Whoa, slow down there! That kind of talk doesn’t fly in this zone. This issue might break the Code of Conduct — and breaking the rules could get you spin-dashed outta here!`,
+      body: `⚠️ Whoa, slow down there! That kind of talk doesn’t fly in this zone. You could get spindashed outta here!`,
     });
     return;
   }
@@ -202,7 +202,7 @@ app.on("issue_comment.created", async (context) => {
           owner: context.payload.repository.owner.login,
           repo: context.payload.repository.name,
           issue_number: context.payload.pull_request.number,
-          body: "Hey guy! Thanks for the fix! 🚀 I've added the appropriate label. Take care!",
+          body: "Hey guy! Thanks for the fix! 🚀 I added the right label! Take care!",
         });
       }
     } else {

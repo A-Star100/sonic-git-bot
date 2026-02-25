@@ -16,16 +16,15 @@ const toxicWords = decodeBase64Array(
 module.exports = (app) => {
   app.log("App loaded!");
 
-  // === ISSUES ===
+  // issues
   app.on("issues.opened", async (context) => {
-      // Fetch comments on the issue first
   const { data: comments } = await context.octokit.issues.listComments(context.issue());
   const hasComments = comments.length > 0;
     
     const { title, body } = context.payload.issue;
   const content = `${title} ${body}`.toLowerCase();
 
-  // === Toxicity Check ===
+  // matches toxic regex? if so send msg
   const toxicRegex = new RegExp(`\\b(${toxicWords.join("|")})\\b`, "i");
   const toxicMatch = toxicRegex.test(content);
   if (toxicMatch) {
@@ -34,7 +33,7 @@ module.exports = (app) => {
         body: `⚠️ Whoa, slow down there! That kind of talk doesn’t fly in this zone. You could get spindashed outta here!`,
       })
     );
-    return; // Stop further processing if toxic
+    return;
   }
 
     const labels = [];
@@ -64,7 +63,7 @@ module.exports = (app) => {
     }
   });
 
-  // === ISSUE COMMENTS ===
+  // issue comments
   async function ensureLabelExists(context, label) {
     const { owner, repo } = context.repo();
     try {
@@ -88,7 +87,7 @@ app.on("issue_comment.created", async (context) => {
   const commentBody = context.payload.comment.body.toLowerCase();
   const issue = context.issue();
 
-  // === Basic Toxicity Detection ===
+  // regex matches (again)
   const toxicRegex = new RegExp(`\\b(${toxicWords.join("|")})\\b`, "i");
   if (toxicRegex.test(commentBody)) {
     await context.octokit.issues.createComment({
@@ -100,14 +99,13 @@ app.on("issue_comment.created", async (context) => {
 
   const comment = commentBody;
 
-  // Get current labels on the issue
   const { data: currentLabels } = await context.octokit.issues.listLabelsOnIssue(issue);
   const currentLabelNames = currentLabels.map(label => label.name);
 
   const labelsToAdd = [];
   const labelsToRemove = [];
 
-  // === Detect "remove [label]" commands first ===
+  // detect remove [label] commands
   const removeRegex = /remove\s+(?:the\s+)?label\s+([\w\s-]+)/gi;
   let match;
   while ((match = removeRegex.exec(comment)) !== null) {
@@ -118,7 +116,7 @@ app.on("issue_comment.created", async (context) => {
     }
   }
 
-  // === Add labels only if not already present and not marked for removal ===
+  // add labels only if not already there
   if (
     comment.includes("help") &&
     !currentLabelNames.includes("help wanted") &&
@@ -161,7 +159,7 @@ app.on("issue_comment.created", async (context) => {
     });
   }
 
-  // === Apply label removals ===
+  // remove the labels
   if (labelsToRemove.length) {
     for (const label of labelsToRemove) {
       try {
@@ -170,7 +168,7 @@ app.on("issue_comment.created", async (context) => {
           name: label,
         });
       } catch {
-        // Ignore errors if label was not on the issue
+        // ignore err
       }
     }
 
@@ -183,7 +181,7 @@ app.on("issue_comment.created", async (context) => {
 
 
   
-  // === PULL REQUESTS ===
+  // PRs
   app.on("pull_request.opened", async (context) => {
     const { title, body, labels } = context.payload.pull_request;
     const content = `${title} ${body}`.toLowerCase();
@@ -202,7 +200,7 @@ app.on("issue_comment.created", async (context) => {
           owner: context.payload.repository.owner.login,
           repo: context.payload.repository.name,
           issue_number: context.payload.pull_request.number,
-          body: "Hey guy! Thanks for the fix! 🚀 I added the right label! Take care!",
+          body: "Hey guy! Thanks for the fix! 🚀 I added the `fix` label! Take care!",
         });
       }
     } else {

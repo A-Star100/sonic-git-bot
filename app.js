@@ -14,7 +14,7 @@ const toxicWords = decodeBase64Array(
 
 
 module.exports = (app) => {
-  app.log("App loaded!");
+  app.log("Hello world!!");
 
   // issues
   app.on("issues.opened", async (context) => {
@@ -146,7 +146,16 @@ app.on("issue_comment.created", async (context) => {
     labelsToAdd.push("fix");
   }
 
-  // === Apply label additions ===
+  if (
+    comment.includes("bumps") &&
+    !currentLabelNames.includes("bump") &&
+    !labelsToRemove.includes("bump")
+  ) {
+    await ensureLabelExists(context, "version-bump");
+    labelsToAdd.push("version-bump");
+  }
+
+  // add labels
   if (labelsToAdd.length) {
     await context.octokit.issues.addLabels({
       ...issue,

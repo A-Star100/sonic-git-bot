@@ -58,7 +58,7 @@ module.exports = (app) => {
       );
     } else {
       await context.octokit.issues.createComment(
-        context.issue({ body: `Hey there 👋! Thanks for opening this issue! Contributions are as good as chilli dogs to me! Gotta go fast!` })
+        context.issue({ body: `Hey there 👋! Thanks for opening your issue! Contributions are as good as chilli dogs to me! Gotta go fast! (Sonic Adventure 2 reference)` })
       );
     }
   });
@@ -209,7 +209,7 @@ app.on("issue_comment.created", async (context) => {
           owner: context.payload.repository.owner.login,
           repo: context.payload.repository.name,
           issue_number: context.payload.pull_request.number,
-          body: "Hey guy! Thanks for the fix! 🚀 I added the `fix` label! Take care!",
+          body: "Hey guy! Thanks for the fix! I added the `fix` label! Take care! (Sonic Adventure 2 reference)",
         });
       }
     } else {
